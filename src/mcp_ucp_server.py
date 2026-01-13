@@ -211,13 +211,58 @@ def main():
     if args.transport == "stdio":
         mcp.run(transport="stdio")
     elif args.transport == "http":
+        import uvicorn
+        from starlette.responses import JSONResponse
+        from mcp.server.transport_security import TransportSecuritySettings
+        
         mcp.settings.host = args.host
         mcp.settings.port = args.port
-        mcp.run(transport="streamable-http")
+        # Disable DNS rebinding protection for the ALB
+        mcp.settings.transport_security = TransportSecuritySettings(enable_dns_rebinding_protection=False)
+        
+        # Get the Starlette app from FastMCP
+        app = mcp.streamable_http_app()
+        
+        # Add a health check route for the ALB
+        @app.route("/")
+        async def health_check(request):
+            return JSONResponse({"status": "ok"})
+            
+        logger.info(f"Starting Streamable HTTP server on {args.host}:{args.port}")
+        uvicorn.run(app, host=args.host, port=args.port)
     elif args.transport == "sse":
-        mcp.settings.host = args.host
-        mcp.settings.port = args.port
-        mcp.run(transport="sse")
+        import uvicorn
+        from starlette.applications import Starlette
+        from starlette.responses import JSONResponse
+        from starlette.routing import Route
+        from mcp.server.sse import SseServerTransport
+
+        sse = SseServerTransport("/messages")
+
+        async def handle_sse(request):
+            async with sse.connect_sse(request.scope, request.receive, request._send) as (read_stream, write_stream):
+                await mcp.run(
+                    read_stream,
+                    write_stream,
+                    mcp.create_initialization_options()
+                )
+
+        async def handle_messages(request):
+            await sse.handle_post_message(request.scope, request.receive, request._send)
+
+        async def health_check(request):
+            return JSONResponse({"status": "ok"})
+
+        app = Starlette(
+            routes=[
+                Route("/sse", endpoint=handle_sse),
+                Route("/messages", endpoint=handle_messages, methods=["POST"]),
+                Route("/", endpoint=health_check),
+            ],
+        )
+        
+        logger.info(f"Starting SSE server on {args.host}:{args.port}")
+        uvicorn.run(app, host=args.host, port=args.port)
 
 
 if __name__ == "__main__":

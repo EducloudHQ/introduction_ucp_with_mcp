@@ -1,0 +1,14 @@
+# Exclude infrastructure code and build artifacts
+infra/
+.git/
+.venv/
+__pycache__/
+.pytest_cache/
+tests/
+mcp_ucp_client.py
+# README.md (removed from ignore)
+task.md
+walkthrough.md
+implementation_plan.md
+.python-version
+uv.lock
