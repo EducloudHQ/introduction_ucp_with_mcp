@@ -28,4 +28,4 @@ EXPOSE 8000
 
 # Run the MCP server in SSE mode
 # We use --host 0.0.0.0 to make it accessible inside the container
-CMD ["uv", "run", "python", "-m", "src.mcp_ucp_server", "--transport", "http", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uv", "run", "python", "-m", "src.main", "--transport", "http", "--host", "0.0.0.0", "--port", "8000"]

@@ -31,3 +31,8 @@ python-sdk/
 # UV
 uv.lock
 .python-version
+
+# Docker and AgentCore generated files
+*.yaml
+Dockerfile
+.dockerignore
